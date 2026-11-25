@@ -16,7 +16,7 @@ import requests
 from PIL import Image
 
 SITE = "https://163news.com.br"
-GRAPH = "https://graph.facebook.com/v21.0"
+GRAPH = "https://graph.facebook.com/v27.0"
 
 PAINEL_EMAIL = os.environ["PAINEL_EMAIL"]
 PAINEL_SENHA = os.environ["PAINEL_SENHA"]
