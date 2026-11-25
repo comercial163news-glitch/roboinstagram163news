@@ -37,7 +37,7 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           META_TOKEN: ${{ secrets.META_TOKEN }}
           POSTAR_FEED: "sim"
-          POSTAR_STORIES: "nao"
+          POSTAR_STORIES: "sim"
           MAX_POR_RODADA: "3"
           HASHTAGS: "#163News #MatoGrosso #Notícias"
         run: python robo.py
