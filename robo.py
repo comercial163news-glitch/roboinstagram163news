@@ -26,12 +26,25 @@ META_TOKEN = os.environ["META_TOKEN"]
 POSTAR_FEED = os.environ.get("POSTAR_FEED", "sim").lower() == "sim"
 POSTAR_STORIES = os.environ.get("POSTAR_STORIES", "nao").lower() == "sim"
 MAX_POR_RODADA = int(os.environ.get("MAX_POR_RODADA", "3"))
-HASHTAGS = os.environ.get("HASHTAGS", "#163News #MatoGrosso #Notícias")
 
 # URL pública onde as artes ficam hospedadas (pasta artes/ deste repositório)
 REPO = os.environ["GITHUB_REPOSITORY"]
 BRANCH = os.environ.get("GITHUB_REF_NAME", "main")
 URL_ARTES = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/artes"
+
+# ===== LEGENDA PADRÃO =====
+# Edite o texto entre as três aspas. O robô troca automaticamente:
+#   {titulo}  -> título da notícia
+#   {resumo}  -> subtítulo/resumo da notícia
+#   {link}    -> link da matéria no site
+LEGENDA_PADRAO = """📰 {titulo}
+
+{resumo}
+
+📲 Leia a matéria completa no link da bio ou em 163news.com.br
+
+#163News #MatoGrosso #Notícias"""
+# ==========================
 
 ESTADO = "estado.json"
 UA = {"User-Agent": "Mozilla/5.0 (Robo163News)"}
@@ -67,8 +80,12 @@ def dados_noticia(url):
     html = requests.get(url, headers=UA, timeout=30).text
 
     def meta(prop):
-        m = re.search(r'<meta[^>]+property="' + prop + r'"[^>]+content="([^"]*)"', html)
-        return unescape(m.group(1)).strip() if m else ""
+        for tag in re.findall(r"<meta[^>]+>", html):
+            if f'property="{prop}"' in tag:
+                m = re.search(r'content="([^"]*)"', tag)
+                if m:
+                    return unescape(m.group(1)).strip()
+        return ""
 
     titulo = meta("og:title").replace(" - 163 News", "").strip()
     return {"titulo": titulo, "resumo": meta("og:description")}
@@ -130,13 +147,12 @@ def ig_publicar(image_url, legenda=None, story=False):
     return r["id"]
 
 
-def montar_legenda(d):
-    partes = [d["titulo"]]
-    if d["resumo"] and d["resumo"] != d["titulo"]:
-        partes.append(d["resumo"])
-    partes.append("📲 Leia a matéria completa no link da bio ou em 163news.com.br")
-    partes.append(HASHTAGS)
-    return "\n\n".join(partes)[:2200]
+def montar_legenda(d, link):
+    resumo = d["resumo"] if d["resumo"] != d["titulo"] else ""
+    texto = (LEGENDA_PADRAO.replace("{titulo}", d["titulo"])
+             .replace("{resumo}", resumo).replace("{link}", link))
+    texto = re.sub(r"\n{3,}", "\n\n", texto).strip()  # tira linhas vazias se faltar resumo
+    return texto[:2200]
 
 
 def main():
@@ -172,7 +188,7 @@ def main():
         try:
             d = dados_noticia(url)
             if POSTAR_FEED:
-                pid = ig_publicar(f"{URL_ARTES}/{artes[(nid, 'post')]}", montar_legenda(d))
+                pid = ig_publicar(f"{URL_ARTES}/{artes[(nid, 'post')]}", montar_legenda(d, url))
                 log(f"Feed OK: notícia {nid} -> post {pid} | {d['titulo']}")
             if POSTAR_STORIES:
                 sid = ig_publicar(f"{URL_ARTES}/{artes[(nid, 'storie')]}", story=True)
