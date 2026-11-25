@@ -1,0 +1,49 @@
+name: Robô Instagram 163 News
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # a cada 15 minutos
+  workflow_dispatch:          # botão "Run workflow" pra rodar na hora
+
+concurrency:
+  group: robo-instagram
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  postar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests pillow
+
+      - name: Configurar git
+        run: |
+          git config user.name "robo-163news"
+          git config user.email "robo@users.noreply.github.com"
+
+      - name: Rodar robô
+        env:
+          PAINEL_EMAIL: ${{ secrets.PAINEL_EMAIL }}
+          PAINEL_SENHA: ${{ secrets.PAINEL_SENHA }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          POSTAR_FEED: "sim"
+          POSTAR_STORIES: "nao"
+          MAX_POR_RODADA: "3"
+          HASHTAGS: "#163News #MatoGrosso #Notícias"
+        run: python robo.py
+
+      - name: Salvar estado
+        if: always()
+        run: |
+          git add estado.json || true
+          git diff --cached --quiet || (git commit -m "estado" && git pull --rebase && git push)
